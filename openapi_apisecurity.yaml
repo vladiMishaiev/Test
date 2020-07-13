@@ -1,0 +1,632 @@
+openapi: 3.0.2
+info:
+  title: AppWall API
+  version: 1.0.0
+  description: OpenAPI 3.0 specification for AppWall API web services - both public (v2) and internal (v3) APIs.
+  contact:
+    name: Radware
+    email: support@radware.com
+    url: www.radware.com
+  termsOfService: 'http://swagger.io/terms/'
+  license:
+    url: 'https://www.apache.org/licenses/LICENSE-2.0.html'
+    name: Apache 2.0
+tags: [""]
+servers:
+  - url: /v2/config/aw
+    description: Public rests that are exposed to customers use.
+  - url: /appwall-api/v3
+    description: Internal APIs that are used by AW GUI only. Not exposed to customers.
+paths:
+  /OpenApiFiles:
+    summary: OpenAPI files collection management
+    description: ''
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                fileContent:
+                  type: string
+              required:
+                - fileContent
+        required: true
+        description: Selected OpenAPI file/Zip to upload.
+      tags: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    required:
+                      - warnings
+                      - fileID
+                    properties:
+                      warnings:
+                        type: array
+                        items:
+                          type: string
+                      fileID:
+                        type: string
+                required:
+                  - status
+                  - data
+              examples:
+                Import new file:
+                  value:
+                    status: success
+                    data:
+                      warnings: []
+                      fileID: Pixi
+          description: status for successfully uploaded + FileID
+      operationId: ImportNewOpenAPI
+      summary: Import new OpenAPI file.
+      description: 'Upload an OpenAPI document file. The uploaded file can be of JSON or YAML formats or a Zip file. The Zip file should conaint all files that define the OpenAPI document. '
+    get:
+      summary: List OpenAPI Files
+      operationId: ListOpenApiFiles
+      tags: []
+      responses:
+        '200':
+          description: 'All the OpenAPI files with a unique fileID and all metadata fields for each entry (date uploaded, date applied, hosts updated)'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/OpenAPIRecords'
+                required:
+                  - status
+                  - data
+              examples:
+                Current saved OpenAPI spec:
+                  value:
+                    status: success
+                    data:
+                      - uploadDate: '2020-07-07T04:52:02.058Z'
+                        fileID: Pixi
+                        effectedHosts:
+                          - dummy
+                        effectedEndpointsCount: 5
+                        processingDate: '2020-07-07T04:58:34.886Z'
+          headers: {}
+      description: Get the list of OpenAPI document files.
+  '/OpenApiFiles/{fileID}':
+    parameters:
+      - schema:
+          type: string
+        name: fileID
+        in: path
+        required: true
+        description: ID of the OpenAPI file
+    delete:
+      summary: Delete OpenAPI File
+      tags: []
+      description: Delete an OpenAPI document file from the list.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data: {}
+                required:
+                  - status
+              examples:
+                Record deleted:
+                  value:
+                    status: success
+                    data: null
+      operationId: DeleteOpenAPI
+      parameters: []
+  '/OpenApiFiles/{fileID}/Process':
+    parameters:
+      - schema:
+          $ref: '#/components/schemas/fileID'
+        name: fileID
+        in: path
+        required: true
+        description: ID of the OpenAPI file
+    post:
+      summary: Process and Apply OpenAPI file
+      description: Configure API Security using the selected OpenAPI document file. Updates only configured hosts under the Host Level Configuration that are also defined in the OpenAPI document. Existing API Security configuration for these hosts will be overwritten.
+      tags: []
+      responses:
+        '200':
+          description: OK
+      operationId: ProcessOpenAPI
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                selectedHost:
+                  type: string
+  '/Hosts/{host}/ApiSecurity/Endpoints':
+    parameters:
+      - schema:
+          type: string
+        name: host
+        in: path
+        required: true
+        description: Host name
+    get:
+      summary: List API endpoints
+      tags: []
+      responses:
+        '200':
+          description: |-
+            Response includes all the API Endpoints with a unique ID and Action for each endpoint. 
+            The results are paginated and include metadata on the page and totals.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      basePaths:
+                        type: array
+                        items:
+                          type: string
+                      endpoints:
+                        $ref: '#/components/schemas/Endpoints'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+              examples: {}
+      operationId: ListHostEndpoints
+      description: Get the list of API endpoints from API Security.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: endpoint
+          description: Filter the list by 'API endpoint' values
+        - schema:
+            type: integer
+          in: query
+          name: page
+          description: Return only a specific page from the results
+        - schema:
+            type: integer
+            default: 25
+          in: query
+          name: pageLimit
+          description: Number of results per page (default 25)
+  '/Hosts/{host}/ApiSecurity/Endpoints/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: host
+        in: path
+        required: true
+        description: Host name
+      - schema:
+          type: integer
+        name: id
+        in: path
+        required: true
+        description: The endpoint id
+    put:
+      summary: Modify an API endpoint's settings
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Endpoint'
+      operationId: ApiSecurityEndpointUpdate
+      description: Modify settings of an API endpoint in API Security by ID.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpointAction:
+                  type: string
+                  enum:
+                    - active
+                    - passive
+                    - bypass
+              required:
+                - endpointAction
+  /Hosts:
+    get:
+      summary: List all hosts
+      tags: []
+      responses:
+        '200':
+          description: A list of all security hosts defined and the options for adding a new host.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hosts:
+                    type: array
+                    items:
+                      type: string
+                  options:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - hosts
+                  - options
+      operationId: ListHosts
+      description: Get the list of configured hosts under the Host Level Configuration.
+    post:
+      summary: Add a new host
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      host:
+                        type: string
+              examples: {}
+      operationId: CreateNewSecurityHost
+      description: Add a new host to the Host Level Configuration.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                host:
+                  type: string
+              required:
+                - host
+        description: ''
+  '/Hosts/{host}/{module}':
+    parameters:
+      - schema:
+          type: string
+        name: host
+        in: path
+        required: true
+        description: Host name
+      - schema:
+          type: string
+          enum:
+            - APISecurity
+            - RedirectValidation
+        name: module
+        in: path
+        required: true
+        description: The security module's name. Security modules are configured for each host under the Host Level Configuration.
+    put:
+      summary: Modify a security module's settings
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+      operationId: UpdateProtector
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - active
+                    - passive
+                    - disabled
+                    - inherit
+      description: Modify the settings of a security module for the selected host.
+    get:
+      summary: Find a security module's settings
+      tags: []
+      responses:
+        '200':
+          description: module's state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Action:
+                    type: string
+                    enum:
+                      - active
+                      - passive
+                      - disabled
+                      - inherit
+      operationId: GetProtector
+      description: Get the settings of a security module for the selected host.
+  '/Hosts/{host}':
+    parameters:
+      - schema:
+          type: string
+        name: host
+        in: path
+        required: true
+        description: Host name
+    delete:
+      summary: Delete a host from the Host Level Configuration.
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+      operationId: DeleteHost
+      description: Delete a host from the Host Level Configuration
+  /HostBindings:
+    get:
+      summary: List all Host Bindings
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/HostBindingRecords'
+      operationId: GetHostBindings
+      description: Get the list of Host Bindings.
+      parameters: []
+    post:
+      summary: Add a new Host Binding
+      tags: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+      operationId: AddHostBindings
+      description: Add a new Host Binding.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HosBindingRecord'
+  '/HostBindings/{host}':
+    parameters:
+      - schema:
+          type: string
+        name: host
+        in: path
+        required: true
+        description: Host binding name
+    get:
+      summary: Find a Host’s Binding configuration
+      tags: []
+      responses:
+        '200':
+          description: OK
+      operationId: HostBindingRecord
+      description: Get the binding configuration of a host.
+    put:
+      summary: Modify a Host’s Binding configuration
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: string
+      operationId: UpdateHostBindingRecord
+      description: Modify the binding configuration of a host.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                '':
+                  $ref: '#/components/schemas/HosBindingRecordPUT'
+    delete:
+      summary: Delete a Host’s Binding configuration
+      tags: []
+      responses:
+        '200':
+          description: OK
+      operationId: DeleteHostBindingRecord
+      description: Delete the binding configuration of a host.
+components:
+  schemas:
+    OpenAPIRecord:
+      title: OpenAPIRecord
+      type: object
+      properties:
+        uploadDate:
+          type: string
+        FileID:
+          $ref: '#/components/schemas/fileID'
+        effectedHosts:
+          type: array
+          items:
+            type: string
+        effectedEndpointsCount:
+          type: integer
+        processingDate:
+          type: string
+    OpenAPIRecords:
+      title: OpenAPIRecords
+      type: array
+      items:
+        $ref: '#/components/schemas/OpenAPIRecord'
+    fileID:
+      title: fileID
+      type: string
+    Endpoint:
+      title: Endpoint
+      type: object
+      properties:
+        ID:
+          type: integer
+        basePaths:
+          type: array
+          items:
+            type: string
+        state:
+          type: string
+          enum:
+            - Active
+            - Passive
+            - Bypass
+        allowAdditionalParameters:
+          type: boolean
+        parameters:
+          type: array
+          items:
+            type: string
+        methods:
+          type: array
+          items:
+            type: string
+    Pagination:
+      title: Pagination
+      type: object
+      properties:
+        page:
+          type: integer
+        pageLimit:
+          type: integer
+        totalCount:
+          type: integer
+        pageCount:
+          type: integer
+        links:
+          type: object
+          properties:
+            self:
+              type: string
+              format: uri
+            first:
+              type: string
+              format: uri
+            previous:
+              type: string
+              format: uri
+            next:
+              type: string
+            last:
+              type: string
+              format: uri
+    Endpoints:
+      title: Endpoints
+      type: object
+      properties:
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/Endpoint'
+    HosBindingRecord:
+      title: HosBindingRecord
+      type: object
+      properties:
+        Link:
+          type: string
+        WebServerInterfaceName:
+          type: array
+          items:
+            type: string
+        GetUserIPFromHTTPHeader:
+          type: string
+        Host:
+          type: array
+          items:
+            type: string
+        Name:
+          type: string
+        Type:
+          type: string
+    HosBindingRecordPUT:
+      title: HosBindingRecordPUT
+      type: object
+      properties:
+        Link:
+          type: string
+        WebServerInterfaceName:
+          type: array
+          items:
+            type: string
+        GetUserIPFromHTTPHeader:
+          type: string
+        Host:
+          type: array
+          items:
+            type: string
+        Type:
+          type: string
+    HostBindingRecords:
+      title: HostBindingRecords
+      type: array
+      items:
+        $ref: '#/components/schemas/HosBindingRecord'
+externalDocs:
+  description: |-
+    We have separate documentations for v2 and v3.
+    To access v3 docs use /appwall-api-doc/.
+  url: 'https://127.0.0.1/appwall-api-doc/v2'
